@@ -17,6 +17,11 @@ typedef struct _node {
 } node;
 
 enum {
+	RADIX_T_ST_KEY_NONEXIST		= 0,
+	RADIX_T_ST_KEY_EXIST		
+};
+
+enum {
 	RADIX_T_ER_NONE				= 0,
 	RADIX_T_ER_ALLOC_MEM_FAIL	= -1000,
 	RADIX_T_ER_KEY_TOO_LONG,

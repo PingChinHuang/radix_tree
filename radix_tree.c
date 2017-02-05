@@ -213,7 +213,37 @@ static int delete(node *root, char *key)
 
 static int lookup(node *root, const char *key)
 {
-	return RADIX_T_ER_NONE;
+	if (root) {
+		int i;
+		edge *t = root->pEdges;
+
+		/* Key is the same as the node's key [exist] */
+		if (0 == strcmp(key, root->czKey))
+			return RADIX_T_ST_KEY_EXIST;
+
+		/* Key length is shorter than or equals to node's key */
+		/* EQAUL: if this key exists it should be return in previous strcmp. */
+		/* SHORTER: clearly it should not have to check the children node */
+		if (strlen(key) <= strlen(root->czKey))
+			return RADIX_T_ST_KEY_NONEXIST;
+
+		for (i = 0; i < strlen(root->czKey) && i < strlen(key); i++) {
+			if (root->czKey[i] == key[i])
+				continue; /* Get the same prefix */
+			else 
+				break; /* Get a different character */
+		}
+
+		/* Check the edge list */
+		while (t) {
+			/* Have an edge matches for key. Check child node. */
+			if (t->chKey == key[i]) {
+				return lookup(t->pChildNode, &key[i]);
+			}
+			t = t->pSiblingEdge;
+		}
+	}
+	return RADIX_T_ST_KEY_NONEXIST;
 }
 
 static void traverse(node *root, int prev_lv_len, int lv)
@@ -234,7 +264,7 @@ static void traverse(node *root, int prev_lv_len, int lv)
 	}
 }
 
-static void test(const char *file)
+static void insert_test(const char *file)
 {
 	FILE *fp;
 	char line[256];
@@ -259,13 +289,41 @@ static void test(const char *file)
 	}
 
 	fclose(fp);
+	traverse(g_pRoot, 0, 0);
+}
+
+static void lookup_test(const char *file)
+{
+	FILE *fp;
+	char line[256];
+
+	if (NULL == file) return;
+
+	fp = fopen(file, "r");
+	if (NULL == fp) {
+		perror("fopen: ");
+		return;	 
+	}
+
+	while (fgets(line, sizeof(line), fp)) {
+		int status, len;
+		len = strlen(line);
+		line[len - 1] = '\0';
+		printf("Look for \"%s\"\n", line);
+		status = lookup(g_pRoot, line);
+		if (RADIX_T_ST_KEY_EXIST == status)
+			fprintf(stdout, "[FOUND] %s\n", line);
+		else if (RADIX_T_ST_KEY_NONEXIST == status)
+			fprintf(stdout, "[NOT FOUND] %s\n", line);
+	}
+
+	fclose(fp);
 }
 
 int main(int argc, char *argv[])
 {
-	test(argv[1]);
-
-	traverse(g_pRoot, 0, 0);
+	insert_test(argv[1]);
+	lookup_test(argv[2]);
 
 	free_node(g_pRoot);
 
