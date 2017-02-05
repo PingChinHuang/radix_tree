@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <error.h>
 
 static node *g_pRoot = NULL;
 
@@ -90,7 +91,7 @@ static int insert(node **pRoot, char *key)
 
 	/* Has Children */
 	if (root->pEdges) {
-		edge *e, *t = root->pEdges;
+		edge *e, *t = root->pEdges, *p;
 		while (t) {
 			/* Have an edge matches for key. */
 			if (t->chKey == key[i]) {
@@ -106,6 +107,25 @@ static int insert(node **pRoot, char *key)
 		if (err) {
 			free(e);
 			return err;
+		}
+
+		p = root->pEdges; /* Previous Edge */
+		t = root->pEdges; /* Current Edge */
+		while (t) {
+			/* Put into edge list by character order.*/
+			if (e->chKey < t->chKey) {
+				e->pSiblingEdge = t;
+				if (p == t) root->pEdges = e; /* root->pEdges -> e -> t -> null */
+				else p->pSiblingEdge = e; /* root->pEdges -> ... -> p -> e -> t -> .... */
+				break;
+			} else {
+				if (!t->pSiblingEdge) {
+					t->pSiblingEdge = e; /* root->pEdges -> .... -> t -> e -> null */
+					break;
+				}
+				p = t;
+				t = t->pSiblingEdge; 
+			}
 		}
 	} else { /* Without Children */
 		/* Create edges to keep remaining string */
@@ -196,29 +216,56 @@ static int lookup(node *root, const char *key)
 	return RADIX_T_ER_NONE;
 }
 
-static void traverse(node *root)
+static void traverse(node *root, int prev_lv_len, int lv)
 {
 	node *n = root;
 	if (n) {
 		edge *e = n->pEdges;
-		printf("[%s]", n->czKey);
+		printf("[%s] \n", n->czKey);
 		while (e) {
-			printf("==%c==>", e->chKey);
-			traverse(e->pChildNode);
+			int i, cur_lv_len;
+			for (i = 0; i < lv * 4 + prev_lv_len; i++) printf(" ");
+			printf("   --(%c)---> ", e->chKey);
+			cur_lv_len = strlen(n->czKey) + lv * 4 + 15 + prev_lv_len;
+			traverse(e->pChildNode, cur_lv_len, lv + 1);
 			e = e->pSiblingEdge;
 		}
 		printf("\n");
 	}
 }
 
+static void test(const char *file)
+{
+	FILE *fp;
+	char line[256];
+
+	if (NULL == file) return;
+
+	fp = fopen(file, "r");
+	if (NULL == fp) {
+		perror("fopen: ");
+		return;	 
+	}
+
+	while (fgets(line, sizeof(line), fp)) {
+		int err, len;
+		printf("Insert %s", line);
+		len = strlen(line);
+		line[len - 1] = '\0';
+		err = insert(&g_pRoot, line);
+		if (err) {
+			fprintf(stderr, "Fail to insert %s into the tree", line);
+		}
+	}
+
+	fclose(fp);
+}
+
 int main(int argc, char *argv[])
 {
-	printf ("%d\n", insert(&g_pRoot, argv[1]));
-	printf ("%d\n", insert(&g_pRoot, argv[2]));
-//printf ("%d\n", insert(&g_pRoot, argv[3]));
-	//insert(g_pRoot, argv[3]);
+	test(argv[1]);
 
-	traverse(g_pRoot);
+	traverse(g_pRoot, 0, 0);
 
 	free_node(g_pRoot);
 
