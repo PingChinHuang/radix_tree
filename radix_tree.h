@@ -12,8 +12,9 @@ typedef struct _edge {
 } edge;
 
 typedef struct _node {
-	char	czKey[NODE_KEY_SIZE];
-	edge	*pEdges;
+	unsigned char	bString;
+	char			czKey[NODE_KEY_SIZE];
+	edge			*pEdges;
 } node;
 
 enum {
