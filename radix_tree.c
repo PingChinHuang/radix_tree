@@ -269,9 +269,9 @@ static void traverse(node *root, int prev_lv_len, int lv)
 		printf("[%s]%s \n", n->czKey, n->bString ? "(Str)" : "");
 		while (e) {
 			int i, cur_lv_len;
-			for (i = 0; i < lv * 4 + prev_lv_len; i++) printf(" ");
-			printf("   --(%c)---> ", e->chKey);
-			cur_lv_len = strlen(n->czKey) + lv * 4 + 15 + prev_lv_len;
+			for (i = 0; i < lv * 2 + prev_lv_len; i++) printf(" ");
+			printf(" -(%c)--> ", e->chKey);
+			cur_lv_len = strlen(n->czKey) + lv * 2 + 9 + prev_lv_len;
 			traverse(e->pChildNode, cur_lv_len, lv + 1);
 			e = e->pSiblingEdge;
 		}
