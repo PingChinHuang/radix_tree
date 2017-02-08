@@ -223,7 +223,108 @@ static int insert(node **pRoot, char *key)
 
 static int delete(node *root, char *key)
 {
-	return RADIX_T_ER_NONE;
+	int rootk_len = strlen(root->czKey);
+	int k_len = strlen(key);
+
+	if (rootk_len) {
+		if (0 == strncmp(root->czKey, key, rootk_len)) {
+			if (k_len == rootk_len) {
+				root->bString = 0;
+				if (NULL == root->pEdges) {
+					/* Leaf node, notify parent to remove this edge and concat the string back to its key. */
+					return RADIX_T_ST_KEY_REMOVED_LEAF;
+				}
+
+				return RADIX_T_ST_KEY_DELETED;
+			} else { /* only the case which k_len > rootk_len */
+				int ret, count;
+				edge *t = root->pEdges, *p = root->pEdges;
+				while (t) {
+					if (t->chKey == key[rootk_len]) {
+						ret = delete(t->pChildNode, &key[rootk_len]);
+						if (RADIX_T_ST_KEY_REMOVED_LEAF == ret) {
+							/* Remove this edge, and combine child node if this node only has one child left. */
+							if (p == t) root->pEdges = t->pSiblingEdge; 
+							else p->pSiblingEdge = t->pSiblingEdge;
+							free_node(t->pChildNode);
+							free(t);
+						
+							/* If this node represents a string, we don't combine it with its child node. */
+							if (root->bString) return RADIX_T_ST_KEY_DELETED;
+							if (NULL == root->pEdges) return RADIX_T_ST_KEY_REMOVED_LEAF;
+
+							count = 0;
+							t = root->pEdges;
+							while (t) {
+								count++;
+								if (count > 1) return RADIX_T_ST_KEY_DELETED;
+								t = t->pSiblingEdge;
+							}
+
+							/* Combine the child node. And set bString to 1. */
+							t = root->pEdges;
+							root->bString = 1;
+							strcat(root->czKey, t->pChildNode->czKey);
+							root->pEdges = t->pChildNode->pEdges;
+							free(t->pChildNode);
+							free(t);
+							return RADIX_T_ST_KEY_DELETED;
+						} else if (RADIX_T_ST_KEY_DELETED == ret) {
+							return ret;
+						}
+						break;
+					}
+					p = t;
+					t = t->pSiblingEdge;
+				}
+			}
+		}
+	
+		return RADIX_T_ST_KEY_NONEXIST;
+	} else { /* Tree root has no key. */
+		int ret, count;
+		edge *t = root->pEdges, *p = root->pEdges;
+		while (t) {
+			if (t->chKey == key[0]) {
+				ret = delete(t->pChildNode, key);
+				if (RADIX_T_ST_KEY_REMOVED_LEAF == ret) {
+					/* Remove this edge, and combine child node if only this node only has one child left. */
+					if (p == t) root->pEdges = t->pSiblingEdge; 
+					else p->pSiblingEdge = t->pSiblingEdge;
+					free_node(t->pChildNode);
+					free(t);
+
+					/* If this node represents a string, we don't combine it with its child node. */
+					if (root->bString) return RADIX_T_ST_KEY_DELETED;
+					if (NULL == root->pEdges) return RADIX_T_ST_KEY_REMOVED_LEAF;
+							
+					count = 0;
+					t = root->pEdges;
+					while (t) {
+						count++;
+						if (count > 1) return RADIX_T_ST_KEY_DELETED;
+						t = t->pSiblingEdge;
+					}
+
+					/* Combine the child node. */
+					t = root->pEdges;
+					root->bString = 1;
+					strcat(root->czKey, t->pChildNode->czKey);
+					root->pEdges = t->pChildNode->pEdges;
+					free_node(t->pChildNode);
+					free(t);
+					return RADIX_T_ST_KEY_DELETED;
+				} else if (RADIX_T_ST_KEY_DELETED == ret) {
+					return ret;
+				}
+				break;
+			}
+			p = t;
+			t = t->pSiblingEdge;
+		}
+	}	
+
+	return RADIX_T_ST_KEY_NONEXIST;
 }
 
 static int lookup(node *root, const char *key)
@@ -336,12 +437,43 @@ static void lookup_test(const char *file)
 	fclose(fp);
 }
 
+static void delete_test(const char *file)
+{
+	FILE *fp;
+	char line[256];
+
+	if (NULL == file) return;
+
+	fp = fopen(file, "r");
+	if (NULL == fp) {
+		perror("fopen: ");
+		return;	 
+	}
+
+	while (fgets(line, sizeof(line), fp)) {
+		int status, len;
+		len = strlen(line);
+		line[len - 1] = '\0';
+		printf("Delete \"%s\"\n", line);
+		status = delete(g_pRoot, line);
+		if (RADIX_T_ST_KEY_REMOVED_LEAF == status) {
+			free_node(g_pRoot);
+			g_pRoot = NULL;
+		}
+		traverse(g_pRoot, 0, 0);
+	}
+
+	fclose(fp);
+}
+
 int main(int argc, char *argv[])
 {
 	insert_test(argv[1]);
-	lookup_test(argv[2]);
+	delete_test(argv[1]);
+	//lookup_test(argv[2]);
 
-	free_node(g_pRoot);
+	if (g_pRoot)
+		free_node(g_pRoot);
 
 	return 0;
 }

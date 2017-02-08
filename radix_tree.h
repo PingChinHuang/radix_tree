@@ -19,7 +19,9 @@ typedef struct _node {
 
 enum {
 	RADIX_T_ST_KEY_NONEXIST		= 0,
-	RADIX_T_ST_KEY_EXIST		
+	RADIX_T_ST_KEY_EXIST,
+	RADIX_T_ST_KEY_REMOVED_LEAF,
+	RADIX_T_ST_KEY_DELETED	
 };
 
 enum {
