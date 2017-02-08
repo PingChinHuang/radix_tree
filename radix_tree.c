@@ -223,8 +223,12 @@ static int insert(node **pRoot, char *key)
 
 static int delete(node *root, char *key)
 {
-	int rootk_len = strlen(root->czKey);
-	int k_len = strlen(key);
+	int rootk_len, k_len;
+
+	if (NULL == root) return RADIX_T_ST_KEY_NONEXIST;
+
+	rootk_len = strlen(root->czKey);
+	k_len = strlen(key);
 
 	if (rootk_len) {
 		if (0 == strncmp(root->czKey, key, rootk_len)) {
@@ -263,12 +267,16 @@ static int delete(node *root, char *key)
 
 							/* Combine the child node. And set bString to 1. */
 							t = root->pEdges;
-							root->bString = 1;
+							if (t->pChildNode->bString) root->bString = 1; /* If child node is a string, this node should becomes a string node after combinination. */
 							strcat(root->czKey, t->pChildNode->czKey);
 							root->pEdges = t->pChildNode->pEdges;
 							free(t->pChildNode);
 							free(t);
-							return RADIX_T_ST_KEY_DELETED;
+
+							if (!root->bString && root->pEdges == NULL)
+								return RADIX_T_ST_KEY_REMOVED_LEAF;
+							else
+								return RADIX_T_ST_KEY_DELETED;
 						} else if (RADIX_T_ST_KEY_DELETED == ret) {
 							return ret;
 						}
@@ -308,12 +316,16 @@ static int delete(node *root, char *key)
 
 					/* Combine the child node. */
 					t = root->pEdges;
-					root->bString = 1;
+					if (t->pChildNode->bString) root->bString = 1;
 					strcat(root->czKey, t->pChildNode->czKey);
 					root->pEdges = t->pChildNode->pEdges;
 					free_node(t->pChildNode);
 					free(t);
-					return RADIX_T_ST_KEY_DELETED;
+
+					if (!root->bString && root->pEdges == NULL)
+						return RADIX_T_ST_KEY_REMOVED_LEAF;
+					else
+						return RADIX_T_ST_KEY_DELETED;
 				} else if (RADIX_T_ST_KEY_DELETED == ret) {
 					return ret;
 				}
@@ -364,7 +376,9 @@ static int lookup(node *root, const char *key)
 
 static void traverse(node *root, int prev_lv_len, int lv)
 {
-	node *n = root;
+	node *n;
+	if (NULL == root) return;
+	n = root;
 	if (n) {
 		edge *e = n->pEdges;
 		printf("[%s]%s \n", n->czKey, n->bString ? "(Str)" : "");
@@ -472,8 +486,8 @@ int main(int argc, char *argv[])
 	delete_test(argv[1]);
 	//lookup_test(argv[2]);
 
-	if (g_pRoot)
-		free_node(g_pRoot);
+	//if (g_pRoot)
+	//	free_node(g_pRoot);
 
 	return 0;
 }
